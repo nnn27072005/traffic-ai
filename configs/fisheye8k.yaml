@@ -1,0 +1,13 @@
+path: /kaggle/input/datasets/flap1812/fisheye8k/Fisheye8K
+
+train: train/images
+val:   test/images    
+test:  test/images
+
+nc: 5
+names:
+  0: Bus
+  1: Bike
+  2: Car
+  3: Pedestrian
+  4: Truck
