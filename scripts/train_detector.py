@@ -1,147 +1,92 @@
 # scripts/train_detector.py
 from __future__ import annotations
-import os, sys, json, time
-from pathlib import Path
-import torch
-from ultralytics import YOLO
-
-# ── Config ────────────────────────────────────────────────────────
-
 import yaml
+import torch
+import numpy as np
+from pathlib import Path
+from ultralytics import YOLO
+from src.training.callbacks import CheckpointSyncCallback
+
 
 def load_config(path: str) -> dict:
     with open(path) as f:
         return yaml.safe_load(f)
 
-CFG = load_config("/kaggle/working/traffic-ai/configs/train_detector.yaml")
 
-
-# ── Class weight calculator ───────────────────────────────────────
-
-def compute_class_weights(dataset_yaml: str) -> list[float]:
+def apply_class_weights_callback(cls_weights: list[float]):
     """
-    Tính class weights từ distribution để compensate imbalance.
-    Formula: w_i = total / (n_classes * count_i), normalized to mean=1.
+    Patch cls loss weights sau khi model được khởi tạo.
+    Ultralytics lưu class weights trong model.model.criterion.cls_pw
+    (với detection loss dùng BCEWithLogitsLoss).
     """
-    import yaml
-    from pathlib import Path
-    import numpy as np
+    weights_tensor = torch.tensor(cls_weights, dtype=torch.float32)
 
-    with open(dataset_yaml) as f:
-        cfg = yaml.safe_load(f)
+    def on_train_start(trainer):
+        try:
+            # Ultralytics v8/v10: criterion được init trong trainer
+            criterion = trainer.model.criterion
+            if hasattr(criterion, "cls_pw"):
+                criterion.cls_pw = weights_tensor.to(trainer.device)
+                print(f"  [ClassWeights] Applied: {cls_weights}")
+            else:
+                # Fallback: patch hyp dict
+                trainer.model.hyp["cls_pw"] = weights_tensor.to(trainer.device)
+                print(f"  [ClassWeights] Applied via hyp: {cls_weights}")
+        except Exception as e:
+            print(f"  [ClassWeights] Warning — could not apply: {e}")
+            print(f"  Training continues with uniform weights.")
 
-    data_root = Path(cfg["path"])
-    label_dir = data_root / "train" / "labels"
-
-    counts = np.zeros(cfg["nc"])
-    for lbl_file in label_dir.glob("*.txt"):
-        for line in lbl_file.read_text().strip().splitlines():
-            if line:
-                cls = int(line.split()[0])
-                if cls < cfg["nc"]:
-                    counts[cls] += 1
-
-    # Inverse frequency, normalized
-    weights = counts.sum() / (cfg["nc"] * counts + 1e-6)
-    weights = weights / weights.mean()
-
-    print("\nClass weights:")
-    for i, (name, w) in enumerate(zip(cfg["names"].values(), weights)):
-        print(f"  {name:<12}: {counts[i]:>6.0f} instances → weight {w:.3f}")
-
-    return weights.tolist()
+    return on_train_start
 
 
-# ── Checkpoint resume helper ──────────────────────────────────────
+def train(config_path: str, resume: bool = False):
+    CFG = load_config(config_path)
 
-def get_resume_path(run_dir: str) -> str | None:
-    """Tìm checkpoint mới nhất để resume nếu runtime bị reset."""
-    run_path = Path(run_dir)
-    last_ckpt = run_path / "weights" / "last.pt"
-    if last_ckpt.exists():
-        print(f"Found checkpoint: {last_ckpt}")
-        return str(last_ckpt)
-    return None
-
-
-# ── Main training function ────────────────────────────────────────
-
-def train(resume: bool = False):
-    print(f"GPU: {torch.cuda.get_device_name(0)}")
+    print(f"GPU : {torch.cuda.get_device_name(0)}")
     print(f"VRAM: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
-    print(f"PyTorch: {torch.__version__}")
 
     run_dir = Path(CFG["project"]) / CFG["name"]
 
     # Resume logic
     if resume:
-        ckpt = get_resume_path(str(run_dir))
-        if ckpt:
-            model = YOLO(ckpt)
+        last_ckpt = run_dir / "weights" / "last.pt"
+        if last_ckpt.exists():
+            print(f"Resuming from {last_ckpt}")
+            model = YOLO(str(last_ckpt))
             model.train(resume=True)
             return
 
-    # Fresh training
     model = YOLO(CFG["model"])
 
-    # Compute class weights từ actual distribution
-    class_weights = compute_class_weights(CFG["data"])
-    # YOLOv10 không có cls_pw per-class trực tiếp,
-    # nhưng ta dùng để inform augmentation strategy
-    # (xem bước 2.3 — oversampling)
-
-    results = model.train(
-        data         = CFG["data"],
-        epochs       = CFG["epochs"],
-        imgsz        = CFG["imgsz"],
-        batch        = CFG["batch"],
-        workers      = CFG["workers"],
-
-        optimizer    = CFG["optimizer"],
-        lr0          = CFG["lr0"],
-        lrf          = CFG["lrf"],
-        momentum     = CFG["momentum"],
-        weight_decay = CFG["weight_decay"],
-        warmup_epochs     = CFG["warmup_epochs"],
-        warmup_momentum   = CFG["warmup_momentum"],
-
-        hsv_h        = CFG["hsv_h"],
-        hsv_s        = CFG["hsv_s"],
-        hsv_v        = CFG["hsv_v"],
-        degrees      = CFG["degrees"],
-        translate    = CFG["translate"],
-        scale        = CFG["scale"],
-        shear        = CFG["shear"],
-        perspective  = CFG["perspective"],
-        flipud       = CFG["flipud"],
-        fliplr       = CFG["fliplr"],
-        mosaic       = CFG["mosaic"],
-        mixup        = CFG["mixup"],
-        copy_paste   = CFG["copy_paste"],
-
-        box          = CFG["box"],
-        cls          = CFG["cls"],
-        dfl          = CFG["dfl"],
-
-        dropout      = CFG["dropout"],
-        label_smoothing = CFG["label_smoothing"],
-
-        project      = CFG["project"],
-        name         = CFG["name"],
-        save_period  = CFG["save_period"],
-        plots        = CFG["plots"],
-
-        # Tránh mất checkpoint khi Kaggle session hết
-        save         = True,
-        exist_ok     = True,
+    # Register callbacks
+    sync_cb = CheckpointSyncCallback(
+        drive_dir  = "/kaggle/working/traffic-ai/checkpoints",
+        sync_every = 5,
     )
+    model.add_callback("on_train_epoch_end", sync_cb.on_train_epoch_end)
 
+    if "cls_weights" in CFG:
+        model.add_callback(
+            "on_train_start",
+            apply_class_weights_callback(CFG["cls_weights"]),
+        )
+
+    # Loại bỏ keys không phải Ultralytics params trước khi pass vào train()
+    EXCLUDED_KEYS = {"model", "cls_weights"}
+    train_args = {k: v for k, v in CFG.items() if k not in EXCLUDED_KEYS}
+
+    results = model.train(**train_args, exist_ok=True)
     return results
 
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument("--config", default="configs/train_detector.yaml")
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
-    train(resume=args.resume)
+
+    train(
+        config_path = f"/kaggle/working/traffic-ai/{args.config}",
+        resume      = args.resume,
+    )
