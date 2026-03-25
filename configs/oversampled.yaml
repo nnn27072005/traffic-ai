@@ -1,0 +1,12 @@
+path: /kaggle/input/datasets/flap1812/fisheye8k/Fisheye8K
+
+train: train_oversampled/images    # ← dùng oversampled set
+val:   /kaggle/input/datasets/flap1812/fisheye8k/Fisheye8K/test/images
+
+nc: 5
+names:
+  0: Bus
+  1: Bike
+  2: Car
+  3: Pedestrian
+  4: Truck
