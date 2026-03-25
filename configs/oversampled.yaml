@@ -1,7 +1,8 @@
+# configs/fisheye8k.yaml
 path: /kaggle/input/datasets/flap1812/fisheye8k/Fisheye8K
 
-train: train_oversampled/images    # ← dùng oversampled set
-val:   /kaggle/input/datasets/flap1812/fisheye8k/Fisheye8K/test/images
+train: /kaggle/working/traffic-ai/data/train_oversampled.txt
+val:   test/images
 
 nc: 5
 names:
