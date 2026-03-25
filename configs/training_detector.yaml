@@ -33,3 +33,4 @@ label_smoothing: 0.1
 project: /kaggle/working/traffic-ai/runs/train
 name: fisheye8k-yolov10s-1280
 save_period: 10
+cls_weights: [1.740, 0.316, 0.412, 0.826, 1.706]
