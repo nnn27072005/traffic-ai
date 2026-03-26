@@ -2,7 +2,7 @@
 model: yolov10s.pt
 data: /kaggle/working/traffic-ai/configs/fisheye8k.yaml
 imgsz: 1280
-epochs: 80
+epochs: 20
 batch: 8
 workers: 4
 optimizer: AdamW
