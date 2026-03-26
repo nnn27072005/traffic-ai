@@ -16,13 +16,13 @@ from src.analyzer.counter       import LineCounter
 # ── Annotators ────────────────────────────────────────────────────
 
 CLASS_COLORS = {
-    "Bus":        sv.Color(hex="#FF6464"),
-    "Bike":       sv.Color(hex="#64C8FF"),
-    "Car":        sv.Color(hex="#64FF96"),
-    "Pedestrian": sv.Color(hex="#FFB464"),
-    "Truck":      sv.Color(hex="#C864FF"),
+    "Bus":        sv.Color.from_hex("#FF6464"),
+    "Bike":       sv.Color.from_hex("#64C8FF"),
+    "Car":        sv.Color.from_hex("#64FF96"),
+    "Pedestrian": sv.Color.from_hex("#FFB464"),
+    "Truck":      sv.Color.from_hex("#C864FF"),
 }
-DEFAULT_COLOR = sv.Color(hex="#AAAAAA")
+DEFAULT_COLOR = sv.Color.from_hex("#AAAAAA")
 
 
 def build_annotators():
@@ -38,7 +38,7 @@ def build_annotators():
     )
     line_ann  = sv.LineZoneAnnotator(
         thickness       = 3,
-        color           = sv.Color(hex="#FFFF00"),
+        color           = sv.Color.from_hex("#FFFF00"),
         text_scale      = 1.0,
         text_thickness  = 2,
         text_offset     = 1.5,
