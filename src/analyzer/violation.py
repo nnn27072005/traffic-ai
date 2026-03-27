@@ -10,31 +10,28 @@ from src.detector.yolo_wrapper import YOLODetector, Detection
 from src.tracker.bytetrack_wrapper import Track
 
 
-# ── Class IDs — khớp với configs/helmet.yaml ─────────────────────
+# ── Constants — khớp với configs/helmet.yaml ─────────────────────
 PLATE_CLASS_ID     = 0
 HELMET_CLASS_ID    = 1
 NO_HELMET_CLASS_ID = 2
 VIOLATION_CLASS_IDS = {NO_HELMET_CLASS_ID}
-
-# Classes từ traffic model (fisheye8k) cần analyze
-BIKE_CLASS_NAMES = {"Bike"}
+BIKE_CLASS_NAMES    = {"Bike"}
 
 
 @dataclass
 class ViolationEvent:
-    track_id:    int
-    bbox_xyxy:   np.ndarray
-    violations:  list[str]        # ["WithoutHelmet"]
-    plate_text:  str | None       # future: OCR on Plate bbox
-    confidence:  float            # max violation confidence
-    frame_idx:   int
+    track_id:   int
+    bbox_xyxy:  np.ndarray
+    violations: list[str]     # ["WithoutHelmet"]
+    confidence: float
+    frame_idx:  int
 
 
 @dataclass
 class ViolationStats:
-    total_violations:  int = 0
-    total_compliant:   int = 0    # WithHelmet detected
-    plates_detected:   int = 0
+    total_violations: int = 0
+    total_compliant:  int = 0
+    plates_detected:  int = 0
     per_type: dict[str, int] = field(default_factory=dict)
 
     @property
@@ -45,15 +42,15 @@ class ViolationStats:
 
 class HelmetViolationAnalyzer:
     """
-    Cascade detection pipeline:
-      1. Nhận motorcycle tracks từ ByteTracker
-      2. Crop region quanh mỗi xe, expand để capture người ngồi
-      3. Chạy helmet model trên crop
-      4. Classify: WithHelmet / WithoutHelmet / Plate
+    Cascade detection:
+      1. Nhận Bike tracks từ ByteTracker
+      2. Crop + expand bbox để capture người trên xe
+      3. Chạy helmet model — 3 classes: Plate / WithHelmet / WithoutHelmet
+      4. Alert nếu WithoutHelmet được detect
 
-    Dataset note: HelmetViolations dùng top-view + grayscale.
-    Model sẽ hoạt động tốt hơn với camera góc cao.
-    Với video góc thấp, confidence threshold nên giảm xuống 0.25.
+    Dataset note:
+      HelmetViolations là top-view, grayscale.
+      confidence mặc định 0.30 — giảm xuống 0.20 nếu miss nhiều.
     """
 
     def __init__(
@@ -89,7 +86,6 @@ class HelmetViolationAnalyzer:
             if track.class_name not in BIKE_CLASS_NAMES:
                 continue
 
-            # Cooldown
             last = self._last_alert.get(track.track_id, -self.cooldown_frames)
             if frame_idx - last < self.cooldown_frames:
                 continue
@@ -102,7 +98,6 @@ class HelmetViolationAnalyzer:
             if not detections:
                 continue
 
-            # Tách theo loại
             violations = [d for d in detections
                           if d.class_id == NO_HELMET_CLASS_ID]
             helmets    = [d for d in detections
@@ -110,26 +105,24 @@ class HelmetViolationAnalyzer:
             plates     = [d for d in detections
                           if d.class_id == PLATE_CLASS_ID]
 
-            # Update compliance stats
             if helmets:
                 self._stats.total_compliant += 1
             if plates:
                 self._stats.plates_detected += 1
 
             if violations:
-                max_conf = max(d.confidence for d in violations)
-                events.append(ViolationEvent(
-                    track_id   = track.track_id,
-                    bbox_xyxy  = track.bbox_xyxy,
-                    violations = [d.class_name for d in violations],
-                    plate_text = None,
-                    confidence = max_conf,
-                    frame_idx  = frame_idx,
-                ))
                 self._stats.total_violations += 1
                 self._stats.per_type["WithoutHelmet"] = \
                     self._stats.per_type.get("WithoutHelmet", 0) + 1
                 self._last_alert[track.track_id] = frame_idx
+
+                events.append(ViolationEvent(
+                    track_id   = track.track_id,
+                    bbox_xyxy  = track.bbox_xyxy,
+                    violations = [d.class_name for d in violations],
+                    confidence = max(d.confidence for d in violations),
+                    frame_idx  = frame_idx,
+                ))
 
         return events
 
@@ -170,9 +163,7 @@ def draw_violations(
 
         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 3)
 
-        label = (f"NO HELMET #{event.track_id} "
-                 f"({event.confidence:.0%})")
-
+        label = f"NO HELMET #{event.track_id} ({event.confidence:.0%})"
         (tw, th), _ = cv2.getTextSize(
             label, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 1
         )
