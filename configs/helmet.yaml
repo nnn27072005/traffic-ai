@@ -3,6 +3,7 @@ path: /kaggle/input/datasets/pkdarabi/helmet/HelmetViolationsV2
 
 train: train/images
 val:   valid/images
+test:  test/images
 
 nc: 3
 names:
@@ -11,6 +12,7 @@ names:
   2: WithoutHelmet
 
 metadata:
-  violation_classes: [2]      # chỉ WithoutHelmet
-  compliance_classes: [1]     # WithHelmet
-  plate_class: [0]            # bonus: license plate
+  violation_classes: [2]
+  compliance_classes: [1]
+  plate_class: [0]
+  note: "Top-view dataset, 963 train / 30 valid / 11 test"
