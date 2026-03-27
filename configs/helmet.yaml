@@ -1,0 +1,16 @@
+# configs/helmet.yaml
+path: /kaggle/input/datasets/pkdarabi/helmet/HelmetViolationsV2
+
+train: train/images
+val:   valid/images
+
+nc: 3
+names:
+  0: Plate
+  1: WithHelmet
+  2: WithoutHelmet
+
+metadata:
+  violation_classes: [2]      # chỉ WithoutHelmet
+  compliance_classes: [1]     # WithHelmet
+  plate_class: [0]            # bonus: license plate
