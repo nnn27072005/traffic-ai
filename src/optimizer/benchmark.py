@@ -44,7 +44,8 @@ def benchmark_pytorch(
 ) -> BenchmarkResult:
     """Benchmark PyTorch .pt model."""
     model = YOLO(str(model_path))
-
+    model.model = model.model.to(device)
+    model.model.eval()
     dummy = torch.randn(1, 3, imgsz, imgsz).to(device)
 
     # Warmup
