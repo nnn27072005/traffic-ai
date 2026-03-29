@@ -1,0 +1,17 @@
+# docker/docker-compose.yml
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../runs/train:/models:ro   # mount model weights
+    environment:
+      - TRAFFIC_MODEL=/models/fisheye8k-yolov10s-1280/weights/best.pt
+      - HELMET_MODEL=/models/helmet-yolov10s-640/weights/best.pt
+      - DEVICE=cpu
+    restart: unless-stopped
