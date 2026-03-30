@@ -66,29 +66,14 @@ async def analyze_image(
     file:       UploadFile = File(...),
     line_ratio: float      = Query(default=0.5, ge=0.1, le=0.9),
 ):
-    """
-    Analyze một ảnh: detect vehicles, track, check helmet violation.
-
-    Args:
-        file       : ảnh upload (jpg/png)
-        line_ratio : vị trí counting line (0.0–1.0, default=0.5)
-
-    Returns:
-        AnalysisResult với tracks, violations, counts
-    """
     if pipeline is None:
         raise HTTPException(status_code=503, detail="Pipeline not ready")
-
-    if file.content_type not in ("image/jpeg", "image/png", "image/jpg"):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: {file.content_type}",
-        )
 
     contents = await file.read()
     nparr    = np.frombuffer(contents, np.uint8)
     frame    = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
+    # Check sau khi decode — nếu không đọc được thì mới báo lỗi
     if frame is None:
         raise HTTPException(status_code=400, detail="Cannot decode image")
 
@@ -100,10 +85,6 @@ async def analyze_image(
 async def analyze_image_annotated(
     file: UploadFile = File(...),
 ):
-    """
-    Analyze ảnh và trả về ảnh đã annotated (JPEG).
-    Dùng cho demo — upload ảnh, nhận lại ảnh có bounding boxes.
-    """
     if pipeline is None:
         raise HTTPException(status_code=503, detail="Pipeline not ready")
 
@@ -116,31 +97,28 @@ async def analyze_image_annotated(
 
     result = pipeline.process_frame(frame)
 
-    # Vẽ annotations lên frame
     from src.analyzer.violation import draw_violations
     import supervision as sv
 
     if result.tracks:
         bboxes = np.array([[t.bbox.x1, t.bbox.y1, t.bbox.x2, t.bbox.y2]
                            for t in result.tracks])
-        sv_det = sv.Detections(xyxy=bboxes)
+        sv_det  = sv.Detections(xyxy=bboxes)
         box_ann = sv.BoxAnnotator(thickness=2)
         frame   = box_ann.annotate(frame, sv_det)
 
-    # Violation boxes
     for v in result.violations:
         x1, y1 = int(v.bbox.x1), int(v.bbox.y1)
         x2, y2 = int(v.bbox.x2), int(v.bbox.y2)
         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 3)
         cv2.putText(frame, f"VIOLATION {v.confidence:.0%}",
                     (x1, y1-5), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6, (0,0,255), 2)
+                    0.6, (0, 0, 255), 2)
 
-    # Encode về JPEG
     _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
     return StreamingResponse(
         io.BytesIO(buf.tobytes()),
-        media_type = "image/jpeg",
+        media_type="image/jpeg",
     )
 
 
