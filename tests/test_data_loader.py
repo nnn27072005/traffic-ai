@@ -5,6 +5,11 @@ from src.data.dataset import FishEye8KDataset, BoundingBox
 
 DATA_ROOT = "/kaggle/input/datasets/flap1812/fisheye8k/Fisheye8K"
 
+pytestmark = pytest.mark.skipif(
+    not Path(DATA_ROOT).exists(),
+    reason="FishEye8K dataset is not available in this environment",
+)
+
 @pytest.fixture
 def small_dataset():
     ds = FishEye8KDataset(DATA_ROOT, split="test")
