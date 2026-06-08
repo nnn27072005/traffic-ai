@@ -1,0 +1,25 @@
+# docker/docker-compose.yml
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    image: traffic-ai-api:latest
+    container_name: traffic-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../runs/train/fisheye8k-yolov10s-1280/weights/best.pt:/app/models/traffic.pt:ro
+      - ../runs/train/helmet-yolov10s-640/weights/best.pt:/app/models/helmet.pt:ro
+    environment:
+      - TRAFFIC_MODEL=/app/models/traffic.pt
+      - HELMET_MODEL=/app/models/helmet.pt
+      - DEVICE=cpu
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

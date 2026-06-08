@@ -1,0 +1,79 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: traffic-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: traffic
+      POSTGRES_PASSWORD: traffic_password
+      POSTGRES_DB: traffic_ai
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U traffic -d traffic_ai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    image: traffic-ai-api:latest
+    container_name: traffic-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./runs/train/fisheye8k-yolov10s-1280/weights/best.pt:/app/models/traffic.pt:ro
+      - ./runs/train/helmet-yolov10s-640/weights/best.pt:/app/models/helmet.pt:ro
+      # Optional: bind mount src for hot-reloading during development
+      - ./src:/app/src
+      - ./alembic:/app/alembic
+    environment:
+      - DATABASE_URL=postgresql://traffic:traffic_password@postgres:5432/traffic_ai
+      - STORAGE_BACKEND=cloudinary
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+      - CLOUDINARY_FOLDER=${CLOUDINARY_FOLDER:-traffic-ai}
+      - TRAFFIC_MODEL=/app/models/traffic.pt
+      - HELMET_MODEL=/app/models/helmet.pt
+      - DEVICE=cpu # Change to 'cuda' and enable deploy resources for GPU
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    # Uncomment the below block to enable NVIDIA GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: traffic-ai-frontend:latest
+    container_name: traffic-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_started
+    # No environment variables needed yet, NEXT_PUBLIC_API_URL could be added here if frontend is updated to use it
+
+volumes:
+  postgres_data:

@@ -1,0 +1,13 @@
+# configs/fisheye8k.yaml
+path: /kaggle/input/datasets/flap1812/fisheye8k/Fisheye8K
+
+train: /kaggle/working/traffic-ai/data/train_oversampled.txt
+val:   test/images
+
+nc: 5
+names:
+  0: Bus
+  1: Bike
+  2: Car
+  3: Pedestrian
+  4: Truck

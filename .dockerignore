@@ -1,0 +1,46 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+include/
+lib/
+bin/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Data & Runs
+data/
+runs/train/
+checkpoints/
+
+# IDEs
+.vscode/
+.idea/
+.ipynb_checkpoints/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+docker/
+.dockerignore
+Dockerfile
+docker-compose.yml

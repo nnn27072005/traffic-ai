@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: traffic-ai-api
+    env: docker
+    dockerContext: .
+    dockerfilePath: docker/Dockerfile.api
+    plan: starter # or standard if you need more RAM for YOLO
+    healthCheckPath: /health
+    envVars:
+      - key: DEVICE
+        value: cpu
+      - key: TRAFFIC_MODEL
+        value: /app/models/traffic.pt
+      - key: HELMET_MODEL
+        value: /app/models/helmet.pt
+    # Note: You need to handle model weights storage. 
+    # For Render, you might want to use a persistent disk or 
+    # download weights during build/startup if they are not in the repo.

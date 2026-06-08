@@ -1,0 +1,124 @@
+/* frontend/src/app/globals.css */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #dbfcff;
+  --primary-container: #00f0ff;
+  --primary-glow: rgba(0, 240, 255, 0.4);
+  --secondary: #ffb59e;
+  --accent: #00dbe9;
+  --background: #131313;
+  --surface: #201f1f;
+  --card-border: rgba(0, 240, 255, 0.2);
+  --text-main: #e5e2e1;
+  --text-muted: #849495;
+  --danger: #ffb4ab;
+  --error: #ef4444;
+  --success: #10b981;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--background);
+  background-image: 
+    linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+.font-headline { font-family: 'Space Grotesk', sans-serif; }
+
+/* HUD Design System */
+.glass-panel {
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(40px);
+  border: 1px solid var(--card-border);
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-panel-active {
+  background-color: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(64px);
+  border: 1px solid rgba(0, 240, 255, 0.6);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+}
+
+.scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.8), transparent);
+  z-index: 10;
+  animation: scan-move 4s linear infinite;
+}
+
+@keyframes scan-move {
+  0% { transform: translateY(-10px); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(500px); opacity: 0; }
+}
+
+.hud-crosshair-tl { position: absolute; top: 0; left: 0; width: 12px; height: 12px; border-top: 2px solid var(--primary-container); border-left: 2px solid var(--primary-container); }
+.hud-crosshair-tr { position: absolute; top: 0; right: 0; width: 12px; height: 12px; border-top: 2px solid var(--primary-container); border-right: 2px solid var(--primary-container); }
+.hud-crosshair-bl { position: absolute; bottom: 0; left: 0; width: 12px; height: 12px; border-bottom: 2px solid var(--primary-container); border-left: 2px solid var(--primary-container); }
+.hud-crosshair-br { position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border-bottom: 2px solid var(--primary-container); border-right: 2px solid var(--primary-container); }
+
+/* Layout Components */
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 280px;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(40px);
+  border-right: 1px solid var(--card-border);
+  padding: 40px 24px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  margin-left: 280px;
+  padding: 40px;
+  min-height: 100vh;
+}
+
+/* Badges & HUD Elements */
+.badge {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.badge-primary { background: rgba(0, 240, 255, 0.1); color: var(--primary-container); border: 1px solid rgba(0, 240, 255, 0.2); }
+.badge-danger { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+::-webkit-scrollbar-thumb { background: rgba(0, 240, 255, 0.3); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 240, 255, 0.6); }
+
